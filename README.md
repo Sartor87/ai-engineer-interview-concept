@@ -46,17 +46,38 @@ Interactive study + AI-powered interview practice tool for the 8 core AI Enginee
 │       ├── 0005-user-supplied-api-key.md
 │       ├── 0006-guardrails-stihia.md
 │       ├── 0007-agent-orchestration-platform.md  # Azure AI Foundry vs custom vs local
+│       │
+│       │   # ADR H1 format MUST be `# N. Title` (adr-tools standard) — not `# ADR-NNNN: Title`
+│       │   # The Structurizr `!decisions` importer parses the leading integer.
 │       └── 0008-agent-count-and-boundaries.md    # Three-agent design (Interviewer/Examiner/Aftersales)
 ├── infra/
 │   ├── main.tf                   # Terraform — resource group + Static Web App
 │   └── terraform.tfvars.example  # Copy to terraform.tfvars and fill in secrets
 ├── .claude/
-│   ├── settings.json             # Claude Code hooks config
+│   ├── settings.json             # Claude Code hooks config (PreToolUse + UserPromptSubmit)
+│   ├── agents/
+│   │   ├── code-reviewer.md      # Proactive code review against project standards (JSX + C#)
+│   │   └── github-workflow.md    # Conventional Commits, branch naming, PR template
+│   ├── commands/
+│   │   ├── code-quality.md       # Run ESLint + dotnet build + manual checklist
+│   │   ├── docs-sync.md          # Check if docs match recent code changes
+│   │   ├── onboard.md            # Onboard to a task with codebase exploration
+│   │   ├── pr-review.md          # Review a PR using code-reviewer.md standards
+│   │   ├── pr-summary.md         # Generate PR body from branch diff
+│   │   └── ticket.md             # Full ticket workflow: read → explore → branch → PR
 │   └── hooks/
-│       └── pre-commit.sh         # Pre-commit: secret scan + ESLint + dotnet build
-├── .github/workflows/
-│   ├── azure-static-web-apps.yml # Build, architecture drift check, deploy to SWA + SonarQube analysis
-│   └── structurizr-pages.yml     # Generate + deploy Structurizr site to GitHub Pages
+│       ├── pre-commit.sh         # Pre-commit: secrets + ESLint + dotnet build + architecture sync
+│       ├── skill-eval.js         # UserPromptSubmit: rule-based skill activation suggestions
+│       ├── skill-rules.json      # Skill detection rules tailored to this stack
+│       └── skill-rules.schema.json  # JSON Schema for skill-rules.json
+├── .github/
+│   ├── workflows/
+│   │   ├── azure-static-web-apps.yml # Build, architecture drift check, deploy to SWA + SonarQube analysis
+│   │   └── structurizr-pages.yml     # Mermaid export + static site + deploy to GitHub Pages
+│   ├── scripts/
+│   │   └── build-architecture-site.sh # Builds site/ from .mmd exports + ADRs + template
+│   └── templates/
+│       └── architecture-index.html   # HTML shell with Mermaid.js CDN for the Pages site
 ├── architecture.json             # SonarQube architecture analysis config (generated — do not edit)
 ├── Convert-DslToArchitecture.ps1 # Generates architecture.json from workspace.dsl
 ├── CLAUDE.md                     # Claude Code project context
@@ -156,9 +177,18 @@ docker run -it --rm -p 9999:8080 -v "${PWD}:/usr/local/structurizr" structurizr/
 
 ### GitHub Pages (automated)
 
-Pushing any change under `architecture/` to `main` triggers the [`structurizr-pages.yml`](.github/workflows/structurizr-pages.yml) workflow, which generates a static site via `structurizr-site-generatr` and deploys it to GitHub Pages.
+Pushing any change under `architecture/` to `main` triggers the [`structurizr-pages.yml`](.github/workflows/structurizr-pages.yml) workflow:
+
+1. **Export views** — `structurizr/structurizr` Docker image runs `export -format mermaid` and writes one `.mmd` file per C4 view into `architecture/`.
+2. **Build static site** — [`.github/scripts/build-architecture-site.sh`](.github/scripts/build-architecture-site.sh) wraps each `.mmd` in a `<div class="mermaid">` block, lists ADRs with their `## Status`, and injects everything into [`.github/templates/architecture-index.html`](.github/templates/architecture-index.html). Mermaid renders client-side via CDN.
+3. **Render ADRs** — `pandoc` converts each ADR markdown to standalone HTML under `site/adrs/`.
+4. **Deploy** — `actions/upload-pages-artifact` + `actions/deploy-pages` ship the `site/` directory.
+
+> **Important:** ADR files MUST use the adr-tools H1 format — `# N. Title` — not `# ADR-NNNN: Title`. The Structurizr `!decisions` importer parses the leading integer from the H1; any other prefix throws `NumberFormatException: For input string: "ADR-"` and the export step fails.
 
 One-time setup: **GitHub repo → Settings → Pages → Source: `GitHub Actions`**
+
+> Note: `structurizr/cli` was deprecated in 2025 in favour of the consolidated `structurizr/structurizr` image — the workflow uses the new image.
 
 ### SonarQube Architecture Analysis
 
@@ -336,3 +366,42 @@ EU AI Act (Article 14) human oversight gate sits between Examiner and Aftersales
 - The system prompt is built server-side from a static topic registry (`TopicData.cs`). The client sends only a numeric `topicId` — arbitrary prompt injection from the client is not possible.
 - Stihia guardrail check runs on every user message before the NIM call. On Stihia outage the service fails open to avoid blocking users.
 - All conversation history is held in React `useState`; no session state is persisted server-side beyond the API key cache.
+
+---
+
+## Claude Code Integration
+
+This repo ships a `.claude/` directory with project-specific agents, slash commands, and hooks.
+
+### Agents
+
+| Agent | Purpose |
+|---|---|
+| `code-reviewer` | Proactive code review against JSX + C# project standards (security, async patterns, SSE cleanup, state-order rules) |
+| `github-workflow` | Branch naming, Conventional Commits, PR template enforcement |
+
+Invoke via Claude Code's Agent tool — `code-reviewer` is configured to run proactively after writing or modifying code.
+
+### Slash Commands
+
+| Command | What it does |
+|---|---|
+| `/code-quality [path]` | Runs ESLint + `dotnet build` + manual checklist scan |
+| `/docs-sync` | Compares git log (30 days) against README/ADRs/CLAUDE.md for drift |
+| `/onboard <task>` | Explores the codebase and writes `.claude/tasks/<task>/onboarding.md` |
+| `/pr-review <pr#>` | Fetches PR via `gh pr view`, applies code-reviewer standards, posts feedback |
+| `/pr-summary` | Generates a PR body (Summary / Changes / Test Plan) from `git log main..HEAD` |
+| `/ticket <id>` | Full workflow: read ticket → explore → branch → implement → PR |
+
+### Hooks
+
+| Hook | Trigger | What it does |
+|---|---|---|
+| `pre-commit.sh` | PreToolUse on Bash | Intercepts `git commit` and runs: secret scan (gitleaks or pattern grep), `npm run lint`, `dotnet build`, and architecture drift check (regenerates `architecture.json` and compares to staged version). Exit 2 blocks the commit. |
+| `skill-eval.js` | UserPromptSubmit | Scores the prompt + mentioned file paths against `skill-rules.json` and suggests relevant skills (e.g., `dotnet-backend`, `architecture`, `react-ui-patterns`) before implementation begins. |
+
+Customise skills by editing [`.claude/hooks/skill-rules.json`](.claude/hooks/skill-rules.json). The schema is in [`skill-rules.schema.json`](.claude/hooks/skill-rules.schema.json).
+
+### Project Context
+
+[`CLAUDE.md`](CLAUDE.md) provides Claude Code with stack details, key commands, critical security rules, and the session flow. It is auto-loaded into every Claude Code conversation in this repository.
