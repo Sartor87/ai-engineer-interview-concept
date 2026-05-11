@@ -8,7 +8,10 @@
           "label": "Frontend SPA",
           "description": "Single-page application serving topic study material and the AI chat practice interface. Manages session state and streams AI responses token by token.",
           "patterns": [
-            "src/**"
+            "**/*.jsx",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.ts"
           ]
         },
         {
