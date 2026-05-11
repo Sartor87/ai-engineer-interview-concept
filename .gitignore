@@ -19,3 +19,14 @@ Thumbs.db
 
 # ── SWA CLI ───────────────────────────────────────────────────────────────────
 .swa/
+
+# ── Structurizr ───────────────────────────────────────────────────────────────
+.structurizr/
+architecture/workspace.json
+
+# ── Terraform ─────────────────────────────────────────────────────────────────
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/terraform.tfvars
+infra/terraform.tfstate
+infra/terraform.tfstate.backup

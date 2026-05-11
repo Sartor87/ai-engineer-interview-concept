@@ -30,6 +30,20 @@ Interactive study + AI-powered interview practice tool for the 8 core AI Enginee
 │   ├── host.json
 │   ├── local.settings.json       # Local secrets — gitignored
 │   └── ai-interview-guide.csproj
+├── architecture/
+│   ├── workspace.dsl             # Structurizr C4 model (System Context, Containers, Components)
+│   └── ADRs/
+│       ├── README.md             # ADR index
+│       ├── 0000-use-adrs.md
+│       ├── 0001-cloud-provider-azure.md
+│       ├── 0002-backend-runtime-dotnet8.md
+│       ├── 0003-iac-terraform.md
+│       ├── 0004-inference-provider.md
+│       ├── 0005-user-supplied-api-key.md
+│       └── 0006-guardrails-stihia.md
+├── infra/
+│   ├── main.tf                   # Terraform — resource group + Static Web App
+│   └── terraform.tfvars.example  # Copy to terraform.tfvars and fill in secrets
 ├── .github/workflows/
 │   └── azure-static-web-apps.yml # CI/CD pipeline
 ├── index.html
@@ -90,12 +104,59 @@ npm run dev
 
 ---
 
-## Azure Deployment
+## Architecture Diagrams
 
-### 1. Create Azure Static Web App
+The C4 model lives in [`architecture/workspace.dsl`](architecture/workspace.dsl) and covers three views:
+
+| View | Description |
+|---|---|
+| System Context | Candidate, AI Interview Guide, Stihia, NVIDIA NIM |
+| Containers | Frontend SPA + API Backend + external dependencies |
+| Components | Internal structure of the Azure Functions backend |
+
+### View locally with Structurizr Lite (Podman)
 
 ```bash
-# Via Azure CLI
+cd architecture
+podman run -it --rm -p 9999:8080 -v "${PWD}:/usr/local/structurizr" docker.io/structurizr/lite
+```
+
+Open `http://localhost:9999`.
+
+### View locally with Structurizr Lite (Docker)
+
+```bash
+cd architecture
+docker run -it --rm -p 9999:8080 -v "${PWD}:/usr/local/structurizr" structurizr/lite
+```
+
+---
+
+## Azure Deployment
+
+Infrastructure is managed with Terraform (`infra/main.tf`). The Terraform config creates the resource group and Static Web App with all required app settings in one step.
+
+### Option A — Terraform (recommended)
+
+```bash
+cd infra
+cp terraform.tfvars.example terraform.tfvars
+# edit terraform.tfvars — set stihia_api_key and other values
+terraform init
+terraform apply
+```
+
+Then grab the deployment token and add it to GitHub Actions:
+
+```bash
+terraform output -raw deployment_token
+```
+
+### Option B — Azure CLI (manual)
+
+**1. Create the Static Web App**
+
+```bash
 az staticwebapp create \
   --name ai-interview-guide \
   --resource-group rg-ai-interview \
@@ -109,7 +170,7 @@ az staticwebapp create \
   --login-with-github
 ```
 
-### 2. Copy the deployment token
+**2. Copy the deployment token**
 
 ```bash
 az staticwebapp secrets list \
@@ -118,22 +179,22 @@ az staticwebapp secrets list \
   --query "properties.apiKey" -o tsv
 ```
 
-### 3. Add GitHub Secret
+**3. Add app settings**
 
-In your GitHub repo → Settings → Secrets → Actions:
-- Name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
-- Value: (paste token from step 2)
-
-### 4. Add Azure App Settings
-
-In Azure Portal → Static Web App → Configuration → Application settings, add:
+In Azure Portal → Static Web App → Configuration → Application settings:
 
 | Name | Value |
 |---|---|
 | `STIHIA_API_KEY` | `sk_your_key_here` |
 | `DISABLE_GUARDRAILS` | `false` |
 
-### 5. Push to main
+### Add GitHub Secret
+
+In your GitHub repo → Settings → Secrets → Actions:
+- Name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
+- Value: deployment token from step above
+
+### Push to main
 
 The GitHub Actions workflow builds the React app, compiles the .NET 8 Function, and deploys both automatically.
 

@@ -1,0 +1,5 @@
+location            = "West Europe"
+resource_group_name = "rg-ai-interview"
+app_name            = "ai-interview-guide"
+stihia_api_key      = "sk_your_key_here"
+disable_guardrails  = "false"
