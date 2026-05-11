@@ -28,18 +28,41 @@ jobs:
       - name: Install pandoc
         run: sudo apt-get update -qq && sudo apt-get install -y -qq pandoc
 
+      - name: Diagnostic — show inputs
+        run: |
+          echo "=== architecture/ contents ==="
+          ls -la architecture/
+          echo "=== workspace.dsl head ==="
+          head -10 architecture/workspace.dsl
+          echo "=== docker info ==="
+          docker --version
+
+      - name: Pull Structurizr CLI image
+        run: docker pull structurizr/cli:latest
+
+      - name: Show CLI help (sanity check)
+        run: |
+          docker run --rm structurizr/cli:latest help export || true
+
       - name: Export Structurizr views as Mermaid
         run: |
+          set -x
           docker run --rm \
             -v "${{ github.workspace }}/architecture:/usr/local/structurizr" \
-            structurizr/cli export \
-              -workspace workspace.dsl \
-              -format mermaid
+            -u "$(id -u):$(id -g)" \
+            structurizr/cli:latest export \
+              -workspace /usr/local/structurizr/workspace.dsl \
+              -format mermaid \
+              -output /usr/local/structurizr 2>&1
+          echo "=== Docker exit code: $? ==="
 
       - name: Verify Mermaid export
         run: |
+          echo "=== architecture/ AFTER export ==="
+          ls -la architecture/
           if ! ls architecture/*.mmd > /dev/null 2>&1; then
             echo "ERROR: structurizr/cli did not produce any .mmd files."
+            echo "Check the export step output above for parser errors."
             exit 1
           fi
           echo "Mermaid files produced:"
