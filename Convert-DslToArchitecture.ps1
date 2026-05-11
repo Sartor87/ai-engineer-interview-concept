@@ -319,9 +319,10 @@ foreach ($ctr in ($containers | Where-Object { $_.Tags -notmatch 'External' -and
 }
 
 # ── Write output ──────────────────────────────────────────────────────────────
-$result = [ordered] @{ perspectives = [array] $perspectives }
-$json   = $result | ConvertTo-Json -Depth 12
-Set-Content -Path $OutputPath -Value $json -Encoding UTF8
+$result  = [ordered] @{ perspectives = [array] $perspectives }
+$json    = ($result | ConvertTo-Json -Depth 12) -replace "`r`n", "`n"
+$absPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
+[IO.File]::WriteAllText($absPath, $json, [Text.UTF8Encoding]::new($false))   # UTF-8 no BOM, LF endings
 
 $totalComps = ($containers | ForEach-Object { $_.Components.Count } | Measure-Object -Sum).Sum
 Write-Host "Written  : $OutputPath"

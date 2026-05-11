@@ -32,8 +32,8 @@ jobs:
         shell: pwsh
         run: |
           ./Convert-DslToArchitecture.ps1 -OutputPath architecture.generated.json
-          $generated = (Get-Content architecture.generated.json -Raw).Trim()
-          $committed  = (Get-Content architecture.json          -Raw).Trim()
+          $generated = (Get-Content architecture.generated.json -Raw).Trim() -replace "`r`n", "`n"
+          $committed  = (Get-Content architecture.json          -Raw).Trim() -replace "`r`n", "`n"
           Remove-Item architecture.generated.json
           if ($generated -ne $committed) {
             Write-Host "::error::architecture.json is out of sync with workspace.dsl. Run .\Convert-DslToArchitecture.ps1 locally and commit the result."
