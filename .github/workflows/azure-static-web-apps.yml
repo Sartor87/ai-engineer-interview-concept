@@ -32,13 +32,40 @@ jobs:
         shell: pwsh
         run: |
           ./Convert-DslToArchitecture.ps1 -OutputPath architecture.generated.json
-          $generated = (Get-Content architecture.generated.json -Raw).Trim() -replace "`r`n", "`n"
-          $committed  = (Get-Content architecture.json          -Raw).Trim() -replace "`r`n", "`n"
-          Remove-Item architecture.generated.json
+
+          $rawGenerated = Get-Content architecture.generated.json -Raw
+          $rawCommitted  = Get-Content architecture.json -Raw
+
+          Write-Host "=== generated: $($rawGenerated.Length) chars, first byte: $([int][char]$rawGenerated[0])"
+          Write-Host "=== committed:  $($rawCommitted.Length) chars, first byte: $([int][char]$rawCommitted[0])"
+
+          $generated = $rawGenerated.Trim() -replace "`r`n", "`n" -replace "`r", "`n"
+          $committed  = $rawCommitted.Trim()  -replace "`r`n", "`n" -replace "`r", "`n"
+
+          Write-Host "=== generated normalised: $($generated.Length) chars"
+          Write-Host "=== committed normalised:  $($committed.Length) chars"
+
           if ($generated -ne $committed) {
+            # Show first differing line
+            $genLines = $generated -split "`n"
+            $comLines = $committed  -split "`n"
+            $maxLines = [Math]::Max($genLines.Count, $comLines.Count)
+            for ($i = 0; $i -lt $maxLines; $i++) {
+              $g = if ($i -lt $genLines.Count) { $genLines[$i] } else { '<missing>' }
+              $c = if ($i -lt $comLines.Count) { $comLines[$i] } else { '<missing>' }
+              if ($g -ne $c) {
+                Write-Host "=== first diff at line $($i+1)"
+                Write-Host "  generated: $g"
+                Write-Host "  committed:  $c"
+                break
+              }
+            }
+            Remove-Item architecture.generated.json
             Write-Host "::error::architecture.json is out of sync with workspace.dsl. Run .\Convert-DslToArchitecture.ps1 locally and commit the result."
             exit 1
           }
+
+          Remove-Item architecture.generated.json
           Write-Host "architecture.json matches workspace.dsl"
 
       - name: Build React app
