@@ -76,8 +76,11 @@ function Find-SourceRoot([string[]] $exts) {
             -not $skip
         } | ForEach-Object {
             $rel = [IO.Path]::GetRelativePath($PWD.Path, $_.DirectoryName).Replace('\', '/')
-            if ($rel -eq '.') { $rel = '' }
-            if (-not $seen.ContainsKey($rel)) { $seen[$rel] = ($rel -split '/').Count }
+            # Skip files sitting at the project root — '.' means same dir, '' after normalise.
+            # Root-level files (vite.config.js, etc.) must not compete with src/ or api/.
+            if ($rel -and $rel -ne '.') {
+                if (-not $seen.ContainsKey($rel)) { $seen[$rel] = ($rel -split '/').Count }
+            }
         }
     }
     if ($seen.Count -eq 0) { return $null }
