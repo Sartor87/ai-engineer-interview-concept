@@ -1,0 +1,46 @@
+name: Deploy Structurizr to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'architecture/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Structurizr static site
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/architecture:/var/model" \
+            ghcr.io/avisi-cloud/structurizr-site-generatr \
+            generate-site --workspace-file workspace.dsl
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: architecture/build
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

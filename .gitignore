@@ -23,6 +23,7 @@ Thumbs.db
 # ── Structurizr ───────────────────────────────────────────────────────────────
 .structurizr/
 architecture/workspace.json
+architecture/build/
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
 infra/.terraform/
