@@ -22,6 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Pre-create output directory
+        run: mkdir -p architecture/build/site
+
       - name: Generate Structurizr static site
         run: |
           docker run --rm \
