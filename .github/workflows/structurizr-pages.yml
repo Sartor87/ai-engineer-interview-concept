@@ -26,6 +26,7 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}/architecture:/var/model" \
+            -w /var/model \
             ghcr.io/avisi-cloud/structurizr-site-generatr \
             generate-site --workspace-file workspace.dsl
 

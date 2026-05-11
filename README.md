@@ -11,6 +11,8 @@ Interactive study + AI-powered interview practice tool for the 8 core AI Enginee
 | Hosting | Azure Static Web Apps (Free tier) |
 | AI Model | NVIDIA Nemotron-Mini-4B-Instruct via NIM |
 | Guardrails | Stihia real-time threat detection |
+| IaC | Terraform (`azurerm`) |
+| Code Quality | SonarQube (architecture analysis + C# + JS) |
 
 ---
 
@@ -32,20 +34,33 @@ Interactive study + AI-powered interview practice tool for the 8 core AI Enginee
 │   └── ai-interview-guide.csproj
 ├── architecture/
 │   ├── workspace.dsl             # Structurizr C4 model (System Context, Containers, Components)
+│   ├── docs/
+│   │   ├── 01-nvidia-nim-setup.md
+│   │   └── 02-stihia-guardrails-setup.md
 │   └── ADRs/
-│       ├── README.md             # ADR index
 │       ├── 0000-use-adrs.md
 │       ├── 0001-cloud-provider-azure.md
 │       ├── 0002-backend-runtime-dotnet8.md
 │       ├── 0003-iac-terraform.md
 │       ├── 0004-inference-provider.md
 │       ├── 0005-user-supplied-api-key.md
-│       └── 0006-guardrails-stihia.md
+│       ├── 0006-guardrails-stihia.md
+│       ├── 0007-agent-orchestration-platform.md  # Azure AI Foundry vs custom vs local
+│       └── 0008-agent-count-and-boundaries.md    # Three-agent design (Interviewer/Examiner/Aftersales)
 ├── infra/
 │   ├── main.tf                   # Terraform — resource group + Static Web App
 │   └── terraform.tfvars.example  # Copy to terraform.tfvars and fill in secrets
+├── .claude/
+│   ├── settings.json             # Claude Code hooks config
+│   └── hooks/
+│       └── pre-commit.sh         # Pre-commit: secret scan + ESLint + dotnet build
 ├── .github/workflows/
-│   └── azure-static-web-apps.yml # CI/CD pipeline
+│   ├── azure-static-web-apps.yml # Build, architecture drift check, deploy to SWA + SonarQube analysis
+│   └── structurizr-pages.yml     # Generate + deploy Structurizr site to GitHub Pages
+├── architecture.json             # SonarQube architecture analysis config (generated — do not edit)
+├── Convert-DslToArchitecture.ps1 # Generates architecture.json from workspace.dsl
+├── CLAUDE.md                     # Claude Code project context
+├── .eslintrc.json                # ESLint config (react + react-hooks)
 ├── index.html
 ├── vite.config.js
 ├── package.json
@@ -63,6 +78,7 @@ Interactive study + AI-powered interview practice tool for the 8 core AI Enginee
 - .NET 8 SDK
 - Azure Functions Core Tools v4: `npm install -g azure-functions-core-tools@4`
 - SWA CLI: `npm install -g @azure/static-web-apps-cli`
+- Gitleaks (optional, upgrades pre-commit secret scanning): `winget install Gitleaks.Gitleaks --source winget`
 
 ### Environment variables
 
@@ -78,6 +94,8 @@ func settings add DISABLE_GUARDRAILS "false"
 |---|---|---|
 | `STIHIA_API_KEY` | Yes (if guardrails enabled) | API key from [app.stihia.ai](https://app.stihia.ai) → Organization → API Keys |
 | `DISABLE_GUARDRAILS` | No | Set `"true"` to bypass Stihia checks (dev/testing only) |
+
+> **Note:** Never commit `api/local.settings.json` — it is gitignored and the pre-commit hook will block it.
 
 ### Run locally
 
@@ -100,6 +118,12 @@ Or use plain Vite dev (proxies /api → port 7071 via vite.config.js):
 npm install
 npm run dev
 # Runs on http://localhost:5173
+```
+
+### Lint
+
+```bash
+npm run lint
 ```
 
 ---
@@ -129,6 +153,45 @@ Open `http://localhost:9999`.
 cd architecture
 docker run -it --rm -p 9999:8080 -v "${PWD}:/usr/local/structurizr" structurizr/lite
 ```
+
+### GitHub Pages (automated)
+
+Pushing any change under `architecture/` to `main` triggers the [`structurizr-pages.yml`](.github/workflows/structurizr-pages.yml) workflow, which generates a static site via `structurizr-site-generatr` and deploys it to GitHub Pages.
+
+One-time setup: **GitHub repo → Settings → Pages → Source: `GitHub Actions`**
+
+### SonarQube Architecture Analysis
+
+`architecture.json` maps the C4 model to SonarQube component groups and deny constraints. It is **generated — do not edit manually**.
+
+After changing `workspace.dsl`, regenerate:
+
+```powershell
+.\Convert-DslToArchitecture.ps1
+```
+
+The CI pipeline (`azure-static-web-apps.yml`) validates that `architecture.json` matches `workspace.dsl` on every push and blocks the build if they drift.
+
+---
+
+## CI/CD Pipeline
+
+The main workflow (`.github/workflows/azure-static-web-apps.yml`) runs three jobs in parallel:
+
+| Job | What it does |
+|---|---|
+| `build_and_deploy` | Validates `architecture.json` sync, builds React app, deploys to Azure SWA |
+| `sonarqube` | Builds .NET project, runs SonarQube analysis (C# + JS + architecture) |
+| `close_pull_request` | Closes SWA staging environments when a PR is merged/closed |
+
+### Required GitHub Secrets and Variables
+
+| Type | Name | Description |
+|---|---|---|
+| Secret | `AZURE_STATIC_WEB_APPS_API_TOKEN` | SWA deployment token (from Terraform output or Azure Portal) |
+| Secret | `SONAR_TOKEN` | SonarQube → My Account → Security → Generate Token |
+| Variable | `SONAR_PROJECT_KEY` | SonarQube project key |
+| Variable | `SONAR_ORGANIZATION` | SonarQube organization key |
 
 ---
 
@@ -194,6 +257,8 @@ In your GitHub repo → Settings → Secrets → Actions:
 - Name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
 - Value: deployment token from step above
 
+See the [CI/CD Pipeline](#cicd-pipeline) section for all required secrets and variables.
+
 ### Push to main
 
 The GitHub Actions workflow builds the React app, compiles the .NET 8 Function, and deploys both automatically.
@@ -248,6 +313,20 @@ Set `DISABLE_GUARDRAILS=true` to bypass all checks (useful for local dev without
 - **Prompt format:** Custom `<extra_id_N>` Nemotron template (applied server-side in the Azure Function)
 - **Context window:** 4,096 tokens
 - **Optimised for:** RAG, instruction following, conversational Q&A
+
+---
+
+## Planned: Agent Workflow
+
+Three specialised agents orchestrated via **Azure AI Foundry Agent Service** (see [ADR-0007](architecture/ADRs/0007-agent-orchestration-platform.md) and [ADR-0008](architecture/ADRs/0008-agent-count-and-boundaries.md)):
+
+| Agent | Role |
+|---|---|
+| **Interviewer** | Conducts the mock interview; adversarial tone; no scoring |
+| **Examiner** | Scores the transcript against a rubric; human-in-the-loop gate before next step |
+| **Aftersales** | Recommends learning resources based on concept gaps; fires only when score < threshold |
+
+EU AI Act (Article 14) human oversight gate sits between Examiner and Aftersales. All candidate names are obfuscated before the transcript reaches the Examiner (data minimisation).
 
 ---
 
