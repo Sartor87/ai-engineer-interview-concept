@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pre-commit hook for Claude Code.
 # Triggered on every Bash tool call — exits 0 immediately unless it's a git commit.
-# On git commit: runs secret scan + frontend lint + dotnet build.
+# On git commit: runs secret scan + frontend lint + dotnet build + architecture sync check.
 # Exit 2 blocks the commit and surfaces the message to Claude.
 
 set -euo pipefail
@@ -87,6 +87,31 @@ if [ -f "api/ai-interview-guide.csproj" ]; then
     if ! dotnet build api/ai-interview-guide.csproj --no-incremental -v quiet 2>&1; then
         echo "ERROR: dotnet build failed. Fix errors before committing."
         FAILED=1
+    fi
+fi
+
+# ── 4. Architecture sync check ────────────────────────────────────────────────
+if [ -f "architecture/workspace.dsl" ] && [ -f "architecture.json" ]; then
+    echo "Checking architecture.json sync with workspace.dsl..."
+    if command -v pwsh &>/dev/null; then
+        TEMP_ARCH="architecture.generated.tmp.json"
+        if pwsh -NonInteractive -File ./Convert-DslToArchitecture.ps1 -OutputPath "$TEMP_ARCH" 2>/dev/null; then
+            # Normalize line endings for comparison
+            generated=$(tr -d '\r' < "$TEMP_ARCH")
+            committed=$(tr -d '\r' < architecture.json)
+            rm -f "$TEMP_ARCH"
+            if [ "$generated" != "$committed" ]; then
+                echo "ERROR: architecture.json is out of sync with workspace.dsl."
+                echo "       Run: ./Convert-DslToArchitecture.ps1"
+                echo "       Then: git add architecture.json"
+                FAILED=1
+            fi
+        else
+            rm -f "$TEMP_ARCH"
+            echo "WARNING: Convert-DslToArchitecture.ps1 failed — skipping sync check."
+        fi
+    else
+        echo "WARNING: pwsh not found — skipping architecture sync check."
     fi
 fi
 

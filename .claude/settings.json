@@ -11,6 +11,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/skill-eval.js",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

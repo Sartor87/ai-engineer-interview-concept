@@ -1,0 +1,147 @@
+{
+  "$schema": "./skill-rules.schema.json",
+  "version": "2.0",
+  "config": {
+    "minConfidenceScore": 3,
+    "showMatchReasons": true,
+    "maxSkillsToShow": 5
+  },
+  "scoring": {
+    "keyword": 2,
+    "keywordPattern": 3,
+    "pathPattern": 4,
+    "directoryMatch": 5,
+    "intentPattern": 4,
+    "contentPattern": 3,
+    "contextPattern": 2
+  },
+  "directoryMappings": {
+    "src": "react-ui-patterns",
+    "api": "dotnet-backend",
+    "architecture": "architecture",
+    "architecture/ADRs": "architecture",
+    ".github/workflows": "github-actions",
+    "infra": "terraform-iac"
+  },
+  "skills": {
+    "code-reviewer": {
+      "description": "Code review against project standards (JSX + C# .NET)",
+      "priority": 9,
+      "triggers": {
+        "keywords": ["review", "check", "lint", "quality", "smell", "anti-pattern"],
+        "keywordPatterns": ["code.review", "\\bpr\\b.*review", "review.*\\bpr\\b"],
+        "intentPatterns": [
+          "(?:review|check|audit).*(?:code|changes|diff|pr)",
+          "(?:is|are).*(?:this|these).*(?:good|correct|right|ok)"
+        ]
+      },
+      "relatedSkills": ["github-workflow"]
+    },
+    "github-workflow": {
+      "description": "Git commits, branches, and PR creation conventions",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["commit", "branch", "pull request", "pr", "push", "merge", "conventional commits"],
+        "keywordPatterns": ["git.commit", "git.push", "\\bpr\\b", "pull.request"],
+        "pathPatterns": [".github/**"],
+        "intentPatterns": [
+          "(?:create|make|open).*(?:commit|branch|pr|pull request)",
+          "(?:commit|push|merge).*(?:changes|code|fix)"
+        ],
+        "contentPatterns": ["git commit", "git push", "gh pr create"]
+      }
+    },
+    "architecture": {
+      "description": "Structurizr DSL, C4 model, ADR authoring and maintenance",
+      "priority": 8,
+      "triggers": {
+        "keywords": ["structurizr", "c4", "adr", "architecture decision", "workspace.dsl", "container", "component view"],
+        "keywordPatterns": ["\\badr\\b", "structurizr", "c4 model", "workspace\\.dsl"],
+        "pathPatterns": ["architecture/**", "architecture/ADRs/**", "**/*.dsl"],
+        "intentPatterns": [
+          "(?:create|write|add|update).*(?:adr|architecture decision)",
+          "(?:add|update).*(?:c4|structurizr|diagram|container|component)",
+          "(?:adr).*(?:for|about|on)"
+        ],
+        "contentPatterns": ["workspace \\{", "softwareSystem", "!decisions", "## Status"]
+      },
+      "relatedSkills": ["github-workflow"]
+    },
+    "github-actions": {
+      "description": "GitHub Actions CI/CD workflow authoring and debugging",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["github action", "github workflow", "workflow", "ci", "cd", "cicd", "pipeline", "yaml"],
+        "keywordPatterns": ["github.action", "ci/?cd", "\\bworkflow\\b", "runs-on"],
+        "pathPatterns": [".github/workflows/**", ".github/**/*.yml", ".github/**/*.yaml"],
+        "intentPatterns": [
+          "(?:create|add|update|fix).*(?:workflow|action|pipeline|ci)",
+          "(?:ci|cd).*(?:failing|broken|fix|add)"
+        ],
+        "contentPatterns": ["runs-on:", "uses:", "steps:", "jobs:"]
+      }
+    },
+    "terraform-iac": {
+      "description": "Terraform infrastructure for Azure Static Web Apps",
+      "priority": 6,
+      "triggers": {
+        "keywords": ["terraform", "infra", "infrastructure", "azurerm", "static web app", "resource group"],
+        "keywordPatterns": ["\\bterraform\\b", "\\binfra\\b", "azurerm"],
+        "pathPatterns": ["infra/**", "**/*.tf", "**/*.tfvars"],
+        "intentPatterns": [
+          "(?:create|add|update).*(?:terraform|infra|resource)",
+          "(?:deploy|provision).*(?:azure|infrastructure)"
+        ],
+        "contentPatterns": ["resource \"azurerm_", "terraform {", "variable \""]
+      }
+    },
+    "dotnet-backend": {
+      "description": "Azure Functions .NET 8 isolated worker — C# backend patterns",
+      "priority": 8,
+      "triggers": {
+        "keywords": ["azure function", "dotnet", ".net", "c#", "csharp", "function", "imemorycache", "sse", "stihia", "nim"],
+        "keywordPatterns": ["azure.function", "\\.net", "\\bc#\\b", "\\bcs\\b.*function"],
+        "pathPatterns": ["api/**", "api/**/*.cs", "api/*.csproj"],
+        "intentPatterns": [
+          "(?:add|update|fix).*(?:function|endpoint|api|backend)",
+          "(?:stihia|nim|guardrail|session|cache).*(?:fix|add|update)",
+          "(?:stream|sse|streaming).*(?:response|output)"
+        ],
+        "contentPatterns": [
+          "\\[Function\\(", "HttpTrigger", "IMemoryCache",
+          "await.*async", "CancellationToken", "ILogger"
+        ]
+      },
+      "relatedSkills": ["code-reviewer"]
+    },
+    "react-ui-patterns": {
+      "description": "React 18 + Vite JSX patterns — hooks, state, SSE streaming, chat UI",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["react", "jsx", "hook", "useeffect", "usestate", "component", "chat", "topic", "sse", "eventsource"],
+        "keywordPatterns": ["\\buse[A-Z]\\w+\\b", "\\bhook\\b", "\\bjsx\\b"],
+        "pathPatterns": ["src/**", "src/**/*.jsx", "src/**/*.js"],
+        "intentPatterns": [
+          "(?:create|write|update).*(?:component|hook|ui)",
+          "(?:handle|fix).*(?:loading|error|state|sse|stream)"
+        ],
+        "contentPatterns": ["useState", "useEffect", "EventSource", "fetch\\("]
+      },
+      "relatedSkills": ["code-reviewer"]
+    },
+    "systematic-debugging": {
+      "description": "Four-phase debugging with root cause analysis",
+      "priority": 9,
+      "triggers": {
+        "keywords": ["bug", "debug", "fix", "error", "issue", "broken", "crash", "failing", "not working"],
+        "keywordPatterns": ["\\bbug\\b", "\\bfix\\b", "\\berror\\b", "\\bissue\\b", "doesn't work", "not working"],
+        "intentPatterns": [
+          "(?:fix|debug|resolve|investigate).*(?:bug|error|issue|problem)",
+          "(?:why).*(?:not working|broken|failing|crash)",
+          "(?:something).*(?:wrong|broken)"
+        ]
+      },
+      "excludePatterns": ["fix typo", "fix formatting", "fix lint"]
+    }
+  }
+}
