@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'architecture/**'
+      - '.github/templates/architecture-index.html'
+      - '.github/scripts/build-architecture-site.sh'
+      - '.github/workflows/structurizr-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -22,21 +25,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pre-create output directory
-        run: mkdir -p architecture/build/site
+      - name: Install pandoc
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq pandoc
 
-      - name: Generate Structurizr static site
+      - name: Export Structurizr views as Mermaid
         run: |
           docker run --rm \
-            -v "${{ github.workspace }}/architecture:/var/model" \
-            -w /var/model \
-            ghcr.io/avisi-cloud/structurizr-site-generatr \
-            generate-site --workspace-file workspace.dsl
+            -v "${{ github.workspace }}/architecture:/usr/local/structurizr" \
+            structurizr/cli export \
+              -workspace workspace.dsl \
+              -format mermaid
+
+      - name: Verify Mermaid export
+        run: |
+          if ! ls architecture/*.mmd > /dev/null 2>&1; then
+            echo "ERROR: structurizr/cli did not produce any .mmd files."
+            exit 1
+          fi
+          echo "Mermaid files produced:"
+          ls -la architecture/*.mmd
+
+      - name: Build static site
+        run: bash .github/scripts/build-architecture-site.sh
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: architecture/build
+          path: site
 
   deploy:
     runs-on: ubuntu-latest

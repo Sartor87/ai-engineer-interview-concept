@@ -24,6 +24,8 @@ Thumbs.db
 .structurizr/
 architecture/workspace.json
 architecture/build/
+architecture/*.mmd
+site/
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
 infra/.terraform/
