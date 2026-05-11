@@ -1,4 +1,4 @@
-# ADR-0007: Agent Orchestration Platform — Azure AI Foundry vs Custom Orchestrator vs Local Foundry
+# 7. Agent Orchestration Platform — Azure AI Foundry vs Custom Orchestrator vs Local Foundry
 
 ## Status
 

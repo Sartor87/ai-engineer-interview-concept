@@ -1,4 +1,4 @@
-# ADR-0000: Use Architecture Decision Records
+# 0. Use Architecture Decision Records
 
 **Status:** Accepted  
 **Date:** 2026-05-11  

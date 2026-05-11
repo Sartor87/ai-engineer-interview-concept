@@ -1,4 +1,4 @@
-# ADR-0003: Infrastructure as Code — Terraform over Bicep
+# 3. Infrastructure as Code — Terraform over Bicep
 
 **Status:** Accepted  
 **Date:** 2026-05-11  

@@ -1,4 +1,4 @@
-# ADR-0004: LLM Inference Provider — OpenAI-Compatible API with NVIDIA NIM
+# 4. LLM Inference Provider — OpenAI-Compatible API with NVIDIA NIM
 
 ## Status
 

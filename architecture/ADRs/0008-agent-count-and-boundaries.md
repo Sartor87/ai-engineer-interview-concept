@@ -1,4 +1,4 @@
-# ADR-0008: Agent Count and Boundaries — Three Specialised Agents
+# 8. Agent Count and Boundaries — Three Specialised Agents
 
 ## Status
 

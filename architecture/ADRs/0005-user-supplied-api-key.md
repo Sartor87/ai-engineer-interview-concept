@@ -1,4 +1,4 @@
-# ADR-0005: API Key Model — User-Supplied Keys over Platform-Managed Keys
+# 5. API Key Model — User-Supplied Keys over Platform-Managed Keys
 
 ## Status
 

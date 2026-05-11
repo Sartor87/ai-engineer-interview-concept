@@ -1,4 +1,4 @@
-# ADR-0001: Cloud Provider — Azure over AWS
+# 1. Cloud Provider — Azure over AWS
 
 ## Status
 

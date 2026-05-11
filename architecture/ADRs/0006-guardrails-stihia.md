@@ -1,4 +1,4 @@
-# ADR-0006: Content Guardrails — Stihia over DIY or Alternatives
+# 6. Content Guardrails — Stihia over DIY or Alternatives
 
 **Status:** Accepted  
 **Date:** 2026-05-11  

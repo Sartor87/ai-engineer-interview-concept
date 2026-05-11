@@ -1,4 +1,4 @@
-# ADR-0002: Backend Runtime — .NET 8 over .NET 10 or Next.js
+# 2. Backend Runtime — .NET 8 over .NET 10 or Next.js
 
 **Status:** Accepted  
 **Date:** 2026-05-11  
