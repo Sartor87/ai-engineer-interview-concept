@@ -1,0 +1,182 @@
+{
+  "perspectives": [
+    {
+      "label": "Containers",
+      "description": "Deployable units from the C4 Container model. Source-level imports between containers are forbidden; all cross-container communication is over HTTP.",
+      "groups": [
+        {
+          "label": "Frontend SPA",
+          "description": "Single-page application serving topic study material and the AI chat practice interface. Manages session state and streams AI responses token by token.",
+          "patterns": [
+            "src/**"
+          ]
+        },
+        {
+          "label": "API Backend",
+          "description": "Handles session management, guardrail enforcement, server-side prompt construction, and LLM proxying with SSE streaming.",
+          "patterns": [
+            "api/**"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "from": [
+            "Frontend SPA"
+          ],
+          "to": [
+            "API Backend"
+          ],
+          "relation": "deny",
+          "message": "Frontend SPA must not import API Backend source — cross-container communication is over HTTP only."
+        },
+        {
+          "from": [
+            "API Backend"
+          ],
+          "to": [
+            "Frontend SPA"
+          ],
+          "relation": "deny",
+          "message": "API Backend must not import Frontend SPA source — cross-container communication is over HTTP only."
+        }
+      ]
+    },
+    {
+      "label": "API Backend — Components",
+      "description": "Internal component structure of 'API Backend' from the C4 Component model.",
+      "groups": [
+        {
+          "label": "SessionFunction",
+          "description": "Accepts the NVIDIA NIM API key from the browser, stores it in the memory cache keyed by a generated sessionId (30-min sliding expiry), and returns the sessionId.",
+          "patterns": [
+            "api/SessionFunction.cs"
+          ]
+        },
+        {
+          "label": "ChatFunction",
+          "description": "Resolves the caller's NVIDIA API key from cache, invokes the guardrail check, builds the system prompt server-side, calls NVIDIA NIM, and forwards the SSE stream to the browser.",
+          "patterns": [
+            "api/ChatFunction.cs"
+          ]
+        },
+        {
+          "label": "StihiaService",
+          "description": "Calls Stihia /v1/sense with the latest user message. Returns allowed/blocked with severity. Fails open on outage. Skipped when DISABLE_GUARDRAILS=true.",
+          "patterns": [
+            "api/StihiaService.cs"
+          ]
+        },
+        {
+          "label": "TopicData",
+          "description": "Static registry of all 8 interview topics and their concepts, sample questions, and server-side system prompt builder. Clients send only a numeric topicId.",
+          "patterns": [
+            "api/TopicData.cs"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "from": [
+            "SessionFunction"
+          ],
+          "to": [
+            "ChatFunction"
+          ],
+          "relation": "deny",
+          "message": "SessionFunction → ChatFunction dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "SessionFunction"
+          ],
+          "to": [
+            "StihiaService"
+          ],
+          "relation": "deny",
+          "message": "SessionFunction → StihiaService dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "SessionFunction"
+          ],
+          "to": [
+            "TopicData"
+          ],
+          "relation": "deny",
+          "message": "SessionFunction → TopicData dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "ChatFunction"
+          ],
+          "to": [
+            "SessionFunction"
+          ],
+          "relation": "deny",
+          "message": "ChatFunction → SessionFunction dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "StihiaService"
+          ],
+          "to": [
+            "SessionFunction"
+          ],
+          "relation": "deny",
+          "message": "StihiaService → SessionFunction dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "StihiaService"
+          ],
+          "to": [
+            "ChatFunction"
+          ],
+          "relation": "deny",
+          "message": "StihiaService → ChatFunction dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "StihiaService"
+          ],
+          "to": [
+            "TopicData"
+          ],
+          "relation": "deny",
+          "message": "StihiaService → TopicData dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "TopicData"
+          ],
+          "to": [
+            "SessionFunction"
+          ],
+          "relation": "deny",
+          "message": "TopicData → SessionFunction dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "TopicData"
+          ],
+          "to": [
+            "ChatFunction"
+          ],
+          "relation": "deny",
+          "message": "TopicData → ChatFunction dependency not declared in C4 model (workspace.dsl)."
+        },
+        {
+          "from": [
+            "TopicData"
+          ],
+          "to": [
+            "StihiaService"
+          ],
+          "relation": "deny",
+          "message": "TopicData → StihiaService dependency not declared in C4 model (workspace.dsl)."
+        }
+      ]
+    }
+  ]
+}

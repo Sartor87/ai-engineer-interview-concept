@@ -28,6 +28,19 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      - name: Validate architecture.json is in sync with workspace.dsl
+        shell: pwsh
+        run: |
+          ./Convert-DslToArchitecture.ps1 -OutputPath architecture.generated.json
+          $generated = (Get-Content architecture.generated.json -Raw).Trim()
+          $committed  = (Get-Content architecture.json          -Raw).Trim()
+          Remove-Item architecture.generated.json
+          if ($generated -ne $committed) {
+            Write-Host "::error::architecture.json is out of sync with workspace.dsl. Run .\Convert-DslToArchitecture.ps1 locally and commit the result."
+            exit 1
+          }
+          Write-Host "architecture.json matches workspace.dsl"
+
       - name: Build React app
         run: |
           npm ci
@@ -43,6 +56,62 @@ jobs:
           api_location: "api"
           output_location: "dist"
           app_build_command: "echo 'already built'"
+
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~\sonar\cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache SonarQube scanner
+        id: cache-sonar-scanner
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}\scanner
+          key: ${{ runner.os }}-sonar-scanner
+          restore-keys: ${{ runner.os }}-sonar-scanner
+
+      - name: Install SonarQube scanner
+        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+        shell: powershell
+        run: |
+          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
+          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+
+      - name: Build and analyze
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: powershell
+        run: |
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin `
+            /k:"${{ vars.SONAR_PROJECT_KEY }}" `
+            /o:"${{ vars.SONAR_ORGANIZATION }}" `
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" `
+            /d:sonar.sources="src,api" `
+            /d:sonar.exclusions="node_modules/**,dist/**,api/obj/**,api/bin/**,infra/**" `
+            /d:sonar.architecture.configpath="architecture.json"
+          dotnet build api/ai-interview-guide.csproj
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
   close_pull_request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
