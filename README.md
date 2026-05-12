@@ -2,6 +2,14 @@
 
 Interactive study + AI-powered interview practice tool for the 8 core AI Engineer interview topics.
 
+## Live demos
+
+### Structurzr Diagrams (CLI, for a full version check below)
+[https://sartor87.github.io/ai-engineer-interview-concept/](https://sartor87.github.io/ai-engineer-interview-concept/)
+
+### Live Demo
+[https://victorious-ocean-023a55403.7.azurestaticapps.net/](https://victorious-ocean-023a55403.7.azurestaticapps.net/)
+
 ## Stack
 
 | Layer | Technology |
